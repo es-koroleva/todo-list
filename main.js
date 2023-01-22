@@ -1,16 +1,26 @@
 let addInput = document.querySelector('.add-input');
 let addBtn = document.querySelector('.add-btn');
 let todo = document.querySelector('.process');
+let ticks;
+const overlay = document.querySelector('.js-overlay-modal');
+const closeButton = document.querySelector('.js-modal-close');
+const ticksOut = document.getElementById('ticks');
+const REWARD_TASKS_COUNT = 5;
+const REST_DURATION = (10 * 60);
 const PROCESS = 'process';
 const COMPLETED = 'completed';
 const DELETED = 'deleted';
 
 let todoList = [];                                                                  //задаем массив для хранения задач
+let workIteration = localStorage.getItem('todoWorkIteration')
+    ? parseInt(localStorage.getItem('todoWorkIteration'))
+    : 1;
 
 if (localStorage.getItem('todo')) {                                             //выводим ранее сохраненный список из localStorage
     todoList = JSON.parse(localStorage.getItem('todo'));
     render();
 }
+
 
 function addAction() {                                                              //метод добавления новой задачи
     if (!addInput.value) return;                                                    //проверка на пустое название
@@ -43,20 +53,27 @@ function getFilteredTasks(status) {                                             
 
 function fillList(status) {                                                         //заполение списка на странице
     let html = '';
-    let block = document.querySelector(`.${status}`);                       //ищем элемент для заполнения
+    let listBlock = document.querySelector(`.${status}`);                   //ищем элемент для заполнения
     let items = getFilteredTasks(status);                                           //получаем список задач
-    if (items.length === 0) block.innerHTML = '';
+    let counter = listBlock.parentElement.parentElement.querySelector('.counter span');     //вывод счетчика задач
+    if (counter) {
+        counter.innerHTML = `${items.length}`;
+    }
+    if (items.length === 0) listBlock.innerHTML = '';
     items.forEach(function (item, i) {                                      //заполнение элемента данными
         html += `
     <li>
     <div class="${item.important ? 'important' : ''} todo-item" data-name="${item.todo}">
-        ${i+1}. ${item.todo}
+        ${i + 1}. ${item.todo}
     </div>
      ${getPopUp(status, i, item)}
     </li>
     `;
     })
-    block.innerHTML = html;                                                         //выводим список на страницу
+    listBlock.innerHTML = html;                                                     //выводим список на страницу
+    if (status === COMPLETED && items.length >= (REWARD_TASKS_COUNT * workIteration)) {
+        openModal();
+    }
 }
 
 function getPopUp(status, i, item) {                                                //формирование списка кнопок всплывающего меню
@@ -166,4 +183,51 @@ function getTask(name) {                                                        
     })
     return result;
 }
+
+
+function openModal() {
+    workIteration++;
+    localStorage.setItem('todoWorkIteration', `${workIteration}`)
+    const modalElem = document.querySelector('.modal');
+    modalElem.classList.add('active');
+    overlay.classList.add('active');
+    ticks = REST_DURATION;
+    wait();
+}
+
+function wait() {
+    if (ticks < 0) {
+        allowCloseModal();
+        return;
+    }
+    ticksOut.innerHTML = ticks;
+    ticks--;
+    setTimeout(wait, 1000);
+}
+
+function allowCloseModal() {
+    closeButton.classList.remove('hide');
+    closeButton.addEventListener('click', hideModal);
+    overlay.addEventListener('click', hideModal);
+    document.body.addEventListener('keyup', escapeCloseModal, false);
+
+}
+
+function escapeCloseModal(e) {
+    if (e.keyCode === 27) {
+        hideModal();
+    }
+}
+
+function hideModal() {
+    document.querySelector('.modal.active').classList.remove('active');
+    overlay.classList.remove('active');
+    closeButton.classList.add('hide')
+    closeButton.removeEventListener('click', hideModal)
+    overlay.removeEventListener('click', hideModal)
+    document.body.removeEventListener('keyup', escapeCloseModal, false);
+}
+
+
+
 
